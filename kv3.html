@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="http://d3js.org/d3.v7.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+</head>
+
+<body>
+    <script>
+        var width = 960;
+        var height = 700;
+
+        var dataJson;
+
+        const handleZoom = (e) => g.attr('transform', e.transform);
+
+        var projection = d3.geoMercator()
+            .center([0, 48])
+            .translate([height/2, width/2])
+            .scale(530)
+            .rotate([0, 0]);
+
+        var path = d3.geoPath()
+            .projection(projection);
+
+
+        var g = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .style("background", "black")
+            .call(d3.zoom().on("zoom", handleZoom))
+            .append("g");
+
+        d3.json("data.json").then( function(data) {
+            dataJson = data["2013"]
+        });
+
+        
+
+
+        var info = d3.select("body").append("div")
+
+        d3.json("europe.topojson").then( function (europe) {
+            var data = topojson.feature(europe, europe.objects.europe);
+            var states = g.selectAll("path.county")
+                .data(data.features)
+                .enter()
+                .append("path")
+                .attr("class", "county")
+                .attr("id", function (d) { return d.id; })
+                .attr("d", path).style("fill", "red")
+                .style("stroke", "gray")
+                .style("stroke-width", 1)
+                .style("stroke-opacity", 1);
+
+            states.on('click', showInfo)
+
+
+        });
+
+        function showInfo(element) {
+            console.log(this.id)
+            info.text("Population: " + dataJson[this.id]['TOTAL']['T'])
+        }
+
+    </script>
+</body>
+
+</html>
