@@ -1,0 +1,116 @@
+body {
+    margin: 0;
+}
+
+.header {
+    margin-bottom: 5px;
+    padding: 1%;
+    width: 100%;
+    background-color: #9FC2CC;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content:space-around ;
+}
+
+.header p {
+    margin-left: 20px;
+    font-size: x-large;
+}
+
+#slider {
+    width: 30%;
+    height: 15px;
+    border-radius: 5px;
+    appearance: none;
+    background: #001489;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+
+#slider:hover {
+    opacity: 1;
+}
+
+#slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #FFDD00;
+    cursor: pointer;
+}
+
+span {
+    font-size:x-large;
+}
+
+.sex-selector input{
+    margin:0;padding:0;
+    -webkit-appearance:none;
+       -moz-appearance:none;
+            appearance:none;
+}
+
+.male{background-image:url(Male3.png);}
+.female{background-image:url(Female3.png);}
+.total{background-image:url(Total.png);}
+
+.sex-selector input:active +.icon{opacity: .9;}
+.sex-selector input:checked +.icon{
+    -webkit-filter: none;
+       -moz-filter: none;
+            filter: none;
+}
+
+.icon{
+    cursor:pointer;
+    background-size:contain;
+    background-repeat:no-repeat;
+    display:inline-block;
+    width: 80px;
+    height:70px;
+    -webkit-transition: all 100ms ease-in;
+       -moz-transition: all 100ms ease-in;
+            transition: all 100ms ease-in;
+    -webkit-filter: brightness(1.8) grayscale(1) opacity(.5);
+       -moz-filter: brightness(1.8) grayscale(1) opacity(.5);
+            filter: brightness(1.8) grayscale(1) opacity(.5);
+}
+
+.icon:hover{
+    -webkit-filter: brightness(1.2) grayscale(.5) opacity(.9);
+       -moz-filter: brightness(1.2) grayscale(.5) opacity(.9);
+            filter: brightness(1.2) grayscale(.5) opacity(.9);
+}
+
+.age-selector {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    float: right;
+}
+
+.age-selector p {
+    margin-right: 5px;
+}
+
+.age-selector select {
+    background-color: #9FC2CC;
+    font-size: x-large;
+}
+
+.svg-container {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    justify-content: space-around;
+}
+
+.chart-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}

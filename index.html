@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="style.css">
+    <script src="http://d3js.org/d3.v7.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+</head>
+
+<body>
+    <div class="header">
+        <span>1960</span>
+        <input type="range" name="slider" id="slider" min="1960" max="2023" value="2023">
+        <span>2023</span>
+        <p>Year: <span id="year">2023</span></p>
+        <p>Gender: </p>
+        <div class="sex-selector">
+            <input class="gender" checked="checked" id="male" type="radio" name="sex" value="M" />
+            <label class="icon male" for="male"></label>
+            <input class="gender" id="female" type="radio" name="sex" value="F" />
+            <label class="icon female" for="female"></label>
+            <input class="gender" id="total" type="radio" name="sex" value="T" />
+            <label class="icon total" for="total"></label>
+        </div>
+        <div class="age-selector">
+            <p>Age group:</p>
+            <select name="ageGroup" id="ageGroup">
+                <option selected="selected" value="TOTAL">Total</option>
+                <option value="UNK">Unknown</option>
+                <option value="Y15-64">15-64</option>
+                <option value="Y_GE65">65+</option>
+                <option value="Y_LT15">15-</option>
+            </select>
+        </div>
+    </div>
+    <div class="svg-container">
+        <div class="map-container">
+        </div>
+        <div class="chart-container">
+        </div>
+    </div>
+    <script>
+        var width = 660;
+        var height = 500;
+        var dataJson;
+        var currentYear = "2023";
+        var currentCountry = "DE";
+        var currentGender = "M";
+        var currentAgeGroup = "TOTAL";
+        var load = 0;
+
+        var slider = d3.select("#slider").on("input", updateYear)
+        var year = d3.select("#year")
+        var gender = d3.selectAll(".gender").on("change", updateGender)
+        var ageGroup = d3.select("#ageGroup").on("change", updateAgeGroup)
+        var options = ageGroup.selectAll("option")
+
+        const handleZoom = (e) => g.attr('transform', e.transform);
+
+        var projection = d3.geoMercator()
+            .center([0, 48])
+            .translate([height / 2, width / 2])
+            .scale(530)
+            .rotate([0, 0]);
+
+        var path = d3.geoPath()
+            .projection(projection);
+
+
+        var g = d3.select(".map-container").append("svg")
+            .attr("id", "map")
+            .attr("width", width)
+            .attr("height", height)
+            .style("background", "#001489")
+            .call(d3.zoom().on("zoom", handleZoom))
+            .append("g");
+
+        var chart = d3.select(".chart-container")
+
+        d3.json("data.json").then(function (data) {
+            dataJson = data
+        });
+
+        var info = d3.select("body").append("div")
+
+        d3.json("europe.topojson").then(function (europe) {
+            var data = topojson.feature(europe, europe.objects.europe);
+            var states = g.selectAll("path.county")
+                .data(data.features)
+                .enter()
+                .append("path")
+                .attr("class", "county")
+                .attr("id", function (d) { return d.id; })
+                .attr("d", path).style("fill", "#FFDD00")
+                .style("stroke", "gray")
+                .style("stroke-width", 1)
+                .style("stroke-opacity", 1);
+
+            states.on('click', selectCountry)
+            updateBarChart();
+            createLineChart();
+        });
+
+        function updateBarChart() {
+            var svg, xAxis, yAxis, title;
+            const width = 640;
+            const height = 520;
+            const marginTop = 30;
+            const marginRight = 30;
+            const marginBottom = 30;
+            const marginLeft = 80;
+
+            keys = Object.keys(dataJson[currentYear])
+            var values = [];
+            keys.forEach(key => {
+                value = dataJson[currentYear][key][currentAgeGroup][currentGender]
+                if (value == "N/A") {
+                    value = 0;
+                }
+                values.push({ "name": key, "value": value })
+            });
+            console.log(values)
+
+            // If this is the first time rendering the cell, create and position the svg, axes, and title
+            if (load == 0) {
+                //Create the svg
+                svg = chart
+                    .append("svg")
+                    .attr("id", "chart")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .style("background", "#001489")
+
+                // Append the x axis
+                xAxis = svg
+                    .append("g")
+                    .attr("class", "xaxis")
+                    .attr("transform", `translate(0,${height - marginBottom})`);
+
+                // Append the y axis
+                yAxis = svg
+                    .append("g")
+                    .attr("class", "yaxis")
+                    .attr("transform", `translate(${marginLeft},0)`);
+
+                // Append the title
+                title = svg
+                    .append("text")
+                    .attr("class", "chart_title")
+                    .attr("transform", `translate(${width / 2},15)`)
+                    .style("text-anchor", "middle")
+                    .attr("fill", "#FFDD00");
+
+                load = 1;
+            }
+            else {
+                console.log("hi")
+                svg = d3.select("#chart");
+                xAxis = svg.select(".xaxis");
+                yAxis = svg.select(".yaxis");
+                title = svg.select(".chart_title");
+            }
+
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(values, function (d) { return d.value })])
+                .range([marginLeft, width - marginRight]);
+
+            const y = d3.scaleBand()
+                .domain(keys)
+                .range([height - marginBottom , marginTop]).padding(0.1);
+
+            xAxis
+                .transition()
+                .duration(500)
+                .call(d3.axisBottom(x).tickFormat(d3.format(".2s")));
+
+            yAxis.call(d3.axisLeft(y));
+            // Update the title
+            title.text(`Population of ${currentGender} in ${currentYear} of age group ${currentAgeGroup} living in each country`);
+
+            // Join the data to a selection of rectangles and transition their attributes
+            const rects = svg.selectAll("rect").data(values);
+
+            // Enter // update // exit as necessary
+            // See: https://observablehq.com/@d3/selection-join
+            rects.join(
+                enter =>
+                    enter
+                        .append("rect")
+                        .attr("x", x.range()[0])
+                        .attr("y", (d) => y(d.name))
+                        .attr("height", y.bandwidth())
+                        .attr("fill", "#FFDD00")
+                        .attr("width", d => {
+                            return x(d.value) - x.range()[0];
+                        }),
+                update =>
+                    update
+                        .transition()
+                        .duration(500)
+                        .delay((d, i) => i * 20)
+                        .attr("width", d => {
+                            return x(d.value) - x.range()[0];
+                        }),
+                exit => exit.remove()
+            );
+        }
+
+        function createLineChart() {
+            const width = 440;
+            const height = 320;
+            const marginTop = 20;
+            const marginRight = 30;
+            const marginBottom = 30;
+            const marginLeft = 40;
+
+            keys = Object.keys(dataJson)
+            var values = [];
+            keys.forEach(key => {
+                value = dataJson[key][currentCountry][currentAgeGroup][currentGender]
+                if (value == "N/A") {
+                    value = 0;
+                }
+                values.push({ "name": key, "value": value })
+            });
+
+            // Declare the x (horizontal position) scale.
+            const x = d3.scaleUtc(d3.extent(keys), [marginLeft, width - marginRight]);
+
+            // Declare the y (vertical position) scale.
+            const y = d3.scaleLinear([0, d3.max(values, function (d) { return d.value })], [height - marginBottom, marginTop]);
+
+            // Declare the line generator.
+            const line = d3.line()
+                .x(d => x(d.name))
+                .y(d => y(d.value));
+
+            const svg = d3.select(".chart-container").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [0, 0, width, height])
+                .attr("style", "max-width: 100%; height: auto; height: intrinsic; background:#001489");
+
+            // Add the x-axis.
+            svg.append("g")
+                .attr("transform", `translate(0,${height - marginBottom})`)
+                .call(d3.axisBottom(x).ticks(width / 80).tickFormat(d3.format(".4")));
+
+            // Add the y-axis, remove the domain line, add grid lines and a label.
+            svg.append("g")
+                .attr("transform", `translate(${marginLeft},0)`)
+                .call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.selectAll(".tick line").clone()
+                    .attr("x2", width - marginLeft - marginRight)
+                    .attr("stroke-opacity", 0.1))
+                .call(g => g.append("text")
+                    .attr("x", -marginLeft)
+                    .attr("y", 10)
+                    .attr("fill", "currentColor")
+                    .attr("text-anchor", "start")
+                    .text("Population"));
+
+            // Append a path for the line.
+            svg.append("path")
+                .attr("fill", "none")
+                .attr("stroke", "steelblue")
+                .attr("stroke-width", 1.5)
+                .attr("d", line(values));
+        }
+
+        function selectCountry(element) {
+            currentCountry = this.id
+            showInfo(this.id)
+        }
+
+        function showInfo(id) {
+            info.text("Population in " + currentYear + " " + currentGender + ": " + dataJson[currentYear][id][currentAgeGroup][currentGender])
+        }
+
+        function updateYear() {
+            year.text(this.value)
+            currentYear = this.value
+            updateBarChart();
+            showInfo(currentCountry)
+        }
+
+        function updateGender() {
+            currentGender = this.value
+            updateBarChart();
+            showInfo(currentCountry)
+        }
+
+        function updateAgeGroup() {
+            var selectedIndex = ageGroup.property('selectedIndex')
+            currentAgeGroup = options["_groups"][0][selectedIndex].value
+            updateBarChart();
+            showInfo(currentCountry)
+        }
+
+    </script>
+</body>
+
+</html>
