@@ -1,5 +1,6 @@
 body {
     margin: 0;
+    background-color: #001489;
 }
 
 .header {
@@ -111,6 +112,17 @@ span {
 
 .chart-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: space-between;
+    gap: 5px;
+}
+
+svg {
+    border: #FFDD00 2px solid;
+}
+
+.yaxis text,
+.xaxis text,
+.domain {
+    fill: #FFDD00;
 }

@@ -47,7 +47,8 @@
         var currentCountry = "DE";
         var currentGender = "M";
         var currentAgeGroup = "TOTAL";
-        var load = 0;
+        var barLoad = 0;
+        var lineLoad = 0;
 
         var slider = d3.select("#slider").on("input", updateYear)
         var year = d3.select("#year")
@@ -106,24 +107,23 @@
             const width = 640;
             const height = 520;
             const marginTop = 30;
-            const marginRight = 30;
+            const marginRight = 40;
             const marginBottom = 30;
             const marginLeft = 80;
 
             keys = Object.keys(dataJson[currentYear])
             var values = [];
+            var countries = []
             keys.forEach(key => {
                 value = dataJson[currentYear][key][currentAgeGroup][currentGender]
-                if (value == "N/A") {
-                    value = 0;
+                if (value != "N/A") {
+                    values.push({ "name": key, "value": value })
+                    countries.push(key)
                 }
-                values.push({ "name": key, "value": value })
             });
-            console.log(values)
+            
 
-            // If this is the first time rendering the cell, create and position the svg, axes, and title
-            if (load == 0) {
-                //Create the svg
+            if (barLoad == 0) {
                 svg = chart
                     .append("svg")
                     .attr("id", "chart")
@@ -131,19 +131,16 @@
                     .attr("height", height)
                     .style("background", "#001489")
 
-                // Append the x axis
                 xAxis = svg
                     .append("g")
                     .attr("class", "xaxis")
                     .attr("transform", `translate(0,${height - marginBottom})`);
 
-                // Append the y axis
                 yAxis = svg
                     .append("g")
                     .attr("class", "yaxis")
                     .attr("transform", `translate(${marginLeft},0)`);
 
-                // Append the title
                 title = svg
                     .append("text")
                     .attr("class", "chart_title")
@@ -151,10 +148,9 @@
                     .style("text-anchor", "middle")
                     .attr("fill", "#FFDD00");
 
-                load = 1;
+                barLoad = 1;
             }
             else {
-                console.log("hi")
                 svg = d3.select("#chart");
                 xAxis = svg.select(".xaxis");
                 yAxis = svg.select(".yaxis");
@@ -167,8 +163,8 @@
                 .range([marginLeft, width - marginRight]);
 
             const y = d3.scaleBand()
-                .domain(keys)
-                .range([height - marginBottom , marginTop]).padding(0.1);
+                .domain(countries)
+                .range([height - marginBottom, marginTop]).padding(0.1);
 
             xAxis
                 .transition()
@@ -176,14 +172,10 @@
                 .call(d3.axisBottom(x).tickFormat(d3.format(".2s")));
 
             yAxis.call(d3.axisLeft(y));
-            // Update the title
             title.text(`Population of ${currentGender} in ${currentYear} of age group ${currentAgeGroup} living in each country`);
 
-            // Join the data to a selection of rectangles and transition their attributes
             const rects = svg.selectAll("rect").data(values);
 
-            // Enter // update // exit as necessary
-            // See: https://observablehq.com/@d3/selection-join
             rects.join(
                 enter =>
                     enter
@@ -200,6 +192,8 @@
                         .transition()
                         .duration(500)
                         .delay((d, i) => i * 20)
+                        .attr("y", (d) => y(d.name))
+                        .attr("height", y.bandwidth())
                         .attr("width", d => {
                             return x(d.value) - x.range()[0];
                         }),
@@ -220,59 +214,89 @@
             keys.forEach(key => {
                 value = dataJson[key][currentCountry][currentAgeGroup][currentGender]
                 if (value == "N/A") {
-                    value = 0;
+                    value = null;
                 }
                 values.push({ "name": key, "value": value })
             });
 
-            // Declare the x (horizontal position) scale.
+           
+
+            console.log(values)
+
+
+
+            if (lineLoad == 0) {
+                svg = d3.select(".chart-container").append("svg")
+                    .attr("id", "line-chart")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("viewBox", [0, 0, width, height])
+                    .attr("style", "max-width: 100%; height: auto; height: intrinsic; background:#001489");
+
+                xAxis = svg.append("g")
+                    .attr("transform", `translate(0,${height - marginBottom})`)
+                    .attr("class", "line-xaxis")
+                    
+
+                yAxis = svg.append("g")
+                    .attr("transform", `translate(${marginLeft},0)`)
+                    .attr("class", "line-yaxis")
+                    
+
+                yAxis.call(g => g.select(".domain").remove())
+                    .call(g => g.selectAll(".tick line").clone()
+                        .attr("x2", width - marginLeft - marginRight)
+                        .attr("fill", "#FFDD00")
+                        .attr("stroke-opacity", 0.4))
+                    .call(g => g.append("text")
+                        .attr("x", -marginLeft)
+                        .attr("y", 10)
+                        .attr("fill", "currentColor")
+                        .attr("text-anchor", "start")
+                        .text("Population"));
+
+                const line = d3.line()
+                    .x(d => x(d.name))
+                    .y(d => y(d.value));
+
+                path = svg.append("path")
+                    .attr("id", "line-path")
+                    .attr("fill", "none")
+                    .attr("stroke", "#FFDD00")
+                    .attr("stroke-width", 1.5)
+                    
+
+                lineLoad = 1;
+            } else {
+                svg = d3.select("#line-chart");
+                xAxis = svg.select(".line-xaxis");
+                yAxis = svg.select(".line-yaxis");
+                path = svg.select("#line-path");
+            }
+
             const x = d3.scaleUtc(d3.extent(keys), [marginLeft, width - marginRight]);
 
-            // Declare the y (vertical position) scale.
             const y = d3.scaleLinear([0, d3.max(values, function (d) { return d.value })], [height - marginBottom, marginTop]);
 
-            // Declare the line generator.
+            xAxis.call(d3.axisBottom(x).ticks(width / 80).tickFormat(d3.format(".4")));
+
+            yAxis.call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
+
             const line = d3.line()
                 .x(d => x(d.name))
                 .y(d => y(d.value));
 
-            const svg = d3.select(".chart-container").append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", [0, 0, width, height])
-                .attr("style", "max-width: 100%; height: auto; height: intrinsic; background:#001489");
+            path.transition()
+                .duration(1500)
+                .attr("d", line(values))
 
-            // Add the x-axis.
-            svg.append("g")
-                .attr("transform", `translate(0,${height - marginBottom})`)
-                .call(d3.axisBottom(x).ticks(width / 80).tickFormat(d3.format(".4")));
 
-            // Add the y-axis, remove the domain line, add grid lines and a label.
-            svg.append("g")
-                .attr("transform", `translate(${marginLeft},0)`)
-                .call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
-                .call(g => g.select(".domain").remove())
-                .call(g => g.selectAll(".tick line").clone()
-                    .attr("x2", width - marginLeft - marginRight)
-                    .attr("stroke-opacity", 0.1))
-                .call(g => g.append("text")
-                    .attr("x", -marginLeft)
-                    .attr("y", 10)
-                    .attr("fill", "currentColor")
-                    .attr("text-anchor", "start")
-                    .text("Population"));
-
-            // Append a path for the line.
-            svg.append("path")
-                .attr("fill", "none")
-                .attr("stroke", "steelblue")
-                .attr("stroke-width", 1.5)
-                .attr("d", line(values));
         }
 
         function selectCountry(element) {
             currentCountry = this.id
             showInfo(this.id)
+            createLineChart()
         }
 
         function showInfo(id) {
