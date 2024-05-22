@@ -61,7 +61,7 @@
         var projection = d3.geoMercator()
             .center([0, 48])
             .translate([height / 2, width / 2])
-            .scale(530)
+            .scale(410)
             .rotate([0, 0]);
 
         var path = d3.geoPath()
@@ -94,12 +94,12 @@
                 .attr("id", function (d) { return d.id; })
                 .attr("d", path).style("fill", "#FFDD00")
                 .style("stroke", "gray")
-                .style("stroke-width", 1)
+                .style("stroke-width", 0.5)
                 .style("stroke-opacity", 1);
 
             states.on('click', selectCountry)
             updateBarChart();
-            createLineChart();
+            updateLineChart();
         });
 
         function updateBarChart() {
@@ -121,7 +121,7 @@
                     countries.push(key)
                 }
             });
-            
+
 
             if (barLoad == 0) {
                 svg = chart
@@ -159,7 +159,7 @@
 
 
             const x = d3.scaleLinear()
-                .domain([0, d3.max(values, function (d) { return d.value })])
+                .domain([0, d3.max(values, function (d) { return d.value + 10 })])
                 .range([marginLeft, width - marginRight]);
 
             const y = d3.scaleBand()
@@ -201,9 +201,9 @@
             );
         }
 
-        function createLineChart() {
-            const width = 440;
-            const height = 320;
+        function updateLineChart() {
+            const width = 640;
+            const height = 520;
             const marginTop = 20;
             const marginRight = 30;
             const marginBottom = 30;
@@ -213,17 +213,11 @@
             var values = [];
             keys.forEach(key => {
                 value = dataJson[key][currentCountry][currentAgeGroup][currentGender]
-                if (value == "N/A") {
-                    value = null;
+                if (value != "N/A") {
+                    values.push({ "name": key, "value": value })
                 }
-                values.push({ "name": key, "value": value })
+
             });
-
-           
-
-            console.log(values)
-
-
 
             if (lineLoad == 0) {
                 svg = d3.select(".chart-container").append("svg")
@@ -236,24 +230,18 @@
                 xAxis = svg.append("g")
                     .attr("transform", `translate(0,${height - marginBottom})`)
                     .attr("class", "line-xaxis")
-                    
+
 
                 yAxis = svg.append("g")
                     .attr("transform", `translate(${marginLeft},0)`)
                     .attr("class", "line-yaxis")
-                    
+
 
                 yAxis.call(g => g.select(".domain").remove())
                     .call(g => g.selectAll(".tick line").clone()
                         .attr("x2", width - marginLeft - marginRight)
                         .attr("fill", "#FFDD00")
                         .attr("stroke-opacity", 0.4))
-                    .call(g => g.append("text")
-                        .attr("x", -marginLeft)
-                        .attr("y", 10)
-                        .attr("fill", "currentColor")
-                        .attr("text-anchor", "start")
-                        .text("Population"));
 
                 const line = d3.line()
                     .x(d => x(d.name))
@@ -264,7 +252,14 @@
                     .attr("fill", "none")
                     .attr("stroke", "#FFDD00")
                     .attr("stroke-width", 1.5)
-                    
+
+                title = svg
+                    .append("text")
+                    .attr("class", "chart_title")
+                    .attr("transform", `translate(${width / 2},15)`)
+                    .style("text-anchor", "middle")
+                    .attr("fill", "#FFDD00");
+
 
                 lineLoad = 1;
             } else {
@@ -272,15 +267,32 @@
                 xAxis = svg.select(".line-xaxis");
                 yAxis = svg.select(".line-yaxis");
                 path = svg.select("#line-path");
+                svg.select(".grid-lines").remove()
             }
 
             const x = d3.scaleUtc(d3.extent(keys), [marginLeft, width - marginRight]);
 
-            const y = d3.scaleLinear([0, d3.max(values, function (d) { return d.value })], [height - marginBottom, marginTop]);
+            const y = d3.scaleLinear([0, d3.max(values, function (d) { return d.value + 10 })], [height - marginBottom, marginTop]);
+
+            yGrid = (g) => g
+                .attr('class', 'grid-lines')
+                .selectAll('line')
+                .data(y.ticks())
+                .join('line')
+                .attr('x1', marginLeft)
+                .attr('x2', width - marginRight)
+                .attr('y1', d => y(d))
+                .attr('y2', d => y(d))
+                .attr("stroke", "#FFDD00")
+                .attr("stroke-opacity", 0.4)
 
             xAxis.call(d3.axisBottom(x).ticks(width / 80).tickFormat(d3.format(".4")));
 
             yAxis.call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
+
+            svg.append('g').call(yGrid)
+
+            title.text(`Population of ${currentGender} in ${currentYear} of age group ${currentAgeGroup} living in ${currentCountry}`);
 
             const line = d3.line()
                 .x(d => x(d.name))
@@ -296,7 +308,7 @@
         function selectCountry(element) {
             currentCountry = this.id
             showInfo(this.id)
-            createLineChart()
+            updateLineChart()
         }
 
         function showInfo(id) {
@@ -314,12 +326,14 @@
             currentGender = this.value
             updateBarChart();
             showInfo(currentCountry)
+            updateLineChart()
         }
 
         function updateAgeGroup() {
             var selectedIndex = ageGroup.property('selectedIndex')
             currentAgeGroup = options["_groups"][0][selectedIndex].value
             updateBarChart();
+            updateLineChart()
             showInfo(currentCountry)
         }
 
