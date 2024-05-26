@@ -39,29 +39,101 @@
         <div class="chart-container">
         </div>
     </div>
+    <label class="switch">
+        <input id="eu_switch" type="checkbox">
+        <span class="slider round"></span>
+    </label>
+    <p>Show EU in bar chart</p>
+    <div id="popup">Popup fixed</div>
     <script>
-        var width = 660;
+        var width = 590;
         var height = 500;
         var dataJson;
         var currentYear = "2023";
         var currentCountry = "DE";
         var currentGender = "M";
         var currentAgeGroup = "TOTAL";
+        var showEU = true
         var barLoad = 0;
         var lineLoad = 0;
+        var popup = d3.select("#popup");
 
-        var slider = d3.select("#slider").on("input", updateYear)
+        var slider = d3.select("#slider").on("mouseup", updateBarChart).on("input", updateYear)
         var year = d3.select("#year")
         var gender = d3.selectAll(".gender").on("change", updateGender)
         var ageGroup = d3.select("#ageGroup").on("change", updateAgeGroup)
         var options = ageGroup.selectAll("option")
+        var eu_switch = d3.select("#eu_switch").on("change", toggleEu)
+
+
+        names = {
+            'AD': "Andorra",
+            'AL': "Albania",
+            'AM': "Armenia",
+            'AT': "Austria",
+            'AZ': "Azerbaijan",
+            'BA': "Bosnia_and_Herzegovina",
+            'BE': "Belgium",
+            'BG': "Bulgaria",
+            'BY': "Belarus",
+            'CH': "Switzerland",
+            'CY': "Cyprus",
+            'CZ': "Czechia",
+            'DE': "Germany",
+            'DK': "Denmark",
+            'EE': "Estonia",
+            'EL': "Greece",
+            'ES': "Spain",
+            'EU27_2020': "European Union",
+            'FI': "Finland",
+            'FR': "France",
+            'FO': "Faroe_Islands",
+            'GE': "Georgia",
+            'HR': "Croatia",
+            'HU': "Hungary",
+            'IE': "Ireland",
+            'IL': "Israel",
+            'IS': "Iceland",
+            'IT': "Italy",
+            'LI': "Liechtenstein",
+            'LT': "Lithuania",
+            'LU': "Luxembourg",
+            'LV': "Latvia",
+            'MC': "Monaco",
+            'MD': "Moldova",
+            'ME': "Montenegro",
+            'MK': "North_Macedonia",
+            'MO': "Monaco",
+            'MT': "Malta",
+            'NL': "Netherlands",
+            'NO': "Norway",
+            'PL': "Poland",
+            'PT': "Portugal",
+            'RO': "Romania",
+            'RS': "Serbia",
+            'RU': "Russia",
+            'SE': "Sweden",
+            'SI': "Slovenia",
+            'SK': "Slovakia",
+            'SM': "San Marino",
+            'TR': "Turkey",
+            'UA': "Ukraine",
+            'UK': "United_Kingdom",
+            'XK': "Kosovo"
+        }
+
+        genderNames = {
+            'M': "Male",
+            'F': "Female",
+            'T': "Total"
+        }
 
         const handleZoom = (e) => g.attr('transform', e.transform);
 
         var projection = d3.geoMercator()
-            .center([0, 48])
+            .center([5, 52])
             .translate([height / 2, width / 2])
-            .scale(410)
+            .scale(380)
             .rotate([0, 0]);
 
         var path = d3.geoPath()
@@ -82,8 +154,6 @@
             dataJson = data
         });
 
-        var info = d3.select("body").append("div")
-
         d3.json("europe.topojson").then(function (europe) {
             var data = topojson.feature(europe, europe.objects.europe);
             var states = g.selectAll("path.county")
@@ -98,18 +168,21 @@
                 .style("stroke-opacity", 1);
 
             states.on('click', selectCountry)
+            states.on('mouseover', showInfo)
+            states.on('mouseout', removeInfo)
+            states.on('mousemove', updateInfo)
             updateBarChart();
             updateLineChart();
         });
 
         function updateBarChart() {
             var svg, xAxis, yAxis, title;
-            const width = 640;
+            const width = 610;
             const height = 520;
             const marginTop = 30;
-            const marginRight = 40;
+            const marginRight = 10;
             const marginBottom = 30;
-            const marginLeft = 80;
+            const marginLeft = 130;
 
             keys = Object.keys(dataJson[currentYear])
             var values = [];
@@ -117,12 +190,15 @@
             keys.forEach(key => {
                 value = dataJson[currentYear][key][currentAgeGroup][currentGender]
                 if (value != "N/A") {
-                    values.push({ "name": key, "value": value })
-                    countries.push(key)
+                    if (!(key == "EU27_2020" && showEU == true)) {
+                        values.push({ "name": names[key], "value": value })
+                        countries.push(names[key].replaceAll("_", " "))
+                    }
+
                 }
             });
 
-
+            console.log(values)
             if (barLoad == 0) {
                 svg = chart
                     .append("svg")
@@ -155,6 +231,7 @@
                 xAxis = svg.select(".xaxis");
                 yAxis = svg.select(".yaxis");
                 title = svg.select(".chart_title");
+                svg.select(".grid-lines").remove()
             }
 
 
@@ -166,34 +243,54 @@
                 .domain(countries)
                 .range([height - marginBottom, marginTop]).padding(0.1);
 
+            xGrid = (g) => g
+                .attr('class', 'grid-lines')
+                .selectAll('line')
+                .data(x.ticks())
+                .join('line')
+                .attr('x1', d => x(d))
+                .attr('x2', d => x(d))
+                .attr('y1', marginTop)
+                .attr('y2', height - marginBottom)
+                .attr("stroke", "#FFDD00")
+                .attr("stroke-opacity", 0.4)
+
             xAxis
                 .transition()
                 .duration(500)
                 .call(d3.axisBottom(x).tickFormat(d3.format(".2s")));
 
             yAxis.call(d3.axisLeft(y));
-            title.text(`Population of ${currentGender} in ${currentYear} of age group ${currentAgeGroup} living in each country`);
+
+            svg.append('g').call(xGrid)
+
+            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup} living in each country`);
 
             const rects = svg.selectAll("rect").data(values);
+
+            d3.selectAll(".county").style("fill", "#FFDD00")
 
             rects.join(
                 enter =>
                     enter
                         .append("rect")
+                        .attr("id", (d) => d.name)
                         .attr("x", x.range()[0])
-                        .attr("y", (d) => y(d.name))
+                        .attr("y", (d) => y(d.name.replaceAll("_", " ")))
                         .attr("height", y.bandwidth())
-                        .attr("fill", "#FFDD00")
+                        .style("fill", "#FFDD00")
                         .attr("width", d => {
                             return x(d.value) - x.range()[0];
                         }),
                 update =>
                     update
                         .transition()
-                        .duration(500)
+                        .duration(200)
                         .delay((d, i) => i * 20)
-                        .attr("y", (d) => y(d.name))
+                        .attr("id", (d) => d.name)
+                        .attr("y", (d) => y(d.name.replaceAll("_", " ")))
                         .attr("height", y.bandwidth())
+                        .style("fill", "#FFDD00")
                         .attr("width", d => {
                             return x(d.value) - x.range()[0];
                         }),
@@ -204,7 +301,7 @@
         function updateLineChart() {
             const width = 640;
             const height = 520;
-            const marginTop = 20;
+            const marginTop = 30;
             const marginRight = 30;
             const marginBottom = 30;
             const marginLeft = 40;
@@ -292,7 +389,7 @@
 
             svg.append('g').call(yGrid)
 
-            title.text(`Population of ${currentGender} in ${currentYear} of age group ${currentAgeGroup} living in ${currentCountry}`);
+            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup} living in ${names[currentCountry].replaceAll("_", " ")}`);
 
             const line = d3.line()
                 .x(d => x(d.name))
@@ -301,31 +398,41 @@
             path.transition()
                 .duration(1500)
                 .attr("d", line(values))
-
-
         }
 
         function selectCountry(element) {
+            d3.select("#" + currentCountry).style("fill", "#FFDD00")
+            d3.selectAll("#" + names[currentCountry]).style("fill", "#FFDD00")
             currentCountry = this.id
-            showInfo(this.id)
+            d3.select("#" + currentCountry).style("fill", "red")
+            d3.select("#" + names[currentCountry]).style("fill", "red")
             updateLineChart()
         }
 
-        function showInfo(id) {
-            info.text("Population in " + currentYear + " " + currentGender + ": " + dataJson[currentYear][id][currentAgeGroup][currentGender])
+        function showInfo(event) {
+            popup.text(names[this.id].replaceAll("_", " "))
+            popup.style("left", event.clientX + window.scrollX + "px")
+            popup.style("top", event.clientY + 50 + window.scrollY + "px")
+            popup.style("display", "block")
+        }
+
+        function removeInfo(event) {
+            popup.style("display", "none")
+        }
+
+        function updateInfo(event) {
+            popup.style("left", event.clientX + window.scrollX + "px")
+            popup.style("top", event.clientY - 30 + window.scrollY + "px")
         }
 
         function updateYear() {
             year.text(this.value)
             currentYear = this.value
-            updateBarChart();
-            showInfo(currentCountry)
         }
 
         function updateGender() {
             currentGender = this.value
             updateBarChart();
-            showInfo(currentCountry)
             updateLineChart()
         }
 
@@ -334,7 +441,11 @@
             currentAgeGroup = options["_groups"][0][selectedIndex].value
             updateBarChart();
             updateLineChart()
-            showInfo(currentCountry)
+        }
+
+        function toggleEu() {
+            showEU = !showEU
+            updateBarChart()
         }
 
     </script>
