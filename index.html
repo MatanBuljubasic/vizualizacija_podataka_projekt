@@ -66,15 +66,18 @@
         var showEU = true
         var barLoad = 0;
         var lineLoad = 0;
+        var lineCountries = [];
         var popup = d3.select("#popup");
+        var compare = false;
+        var points;
+        const format = d3.format(".0f")
 
         var slider = d3.select("#slider").on("mouseup", updateBarChart).on("input", updateYear)
         var year = d3.select("#year")
         var gender = d3.selectAll(".gender").on("change", updateGender)
         var ageGroup = d3.select("#ageGroup").on("change", updateAgeGroup)
         var options = ageGroup.selectAll("#ageGroup option")
-        var country = d3.select("#countrySelect")
-        var countryOptions = d3.selectAll("#countrySelect option")
+        var countrySelect = d3.select("#countrySelect")
         var eu_switch = d3.select("#eu_switch").on("change", toggleEu)
         var addButton = d3.select(".addButton").on("click", addCountryToLine)
         var removeButton = d3.select(".removeButton").on("click", removeCountryFromLine)
@@ -212,7 +215,6 @@
                 }
             });
 
-            console.log(values)
             if (barLoad == 0) {
                 svg = d3.select(".bar-chart")
                     .insert("svg", "label")
@@ -319,16 +321,33 @@
             const marginRight = 30;
             const marginBottom = 30;
             const marginLeft = 40;
+            var dot;
+
 
             keys = Object.keys(dataJson)
             var values = [];
             keys.forEach(key => {
                 value = dataJson[key][currentCountry][currentAgeGroup][currentGender]
                 if (value != "N/A") {
-                    values.push({ "name": key, "value": value })
+                    values.push({ "country": currentCountry, "name": key, "value": value })
                 }
 
             });
+
+            if (lineCountries.length > 0) {
+                for (country of lineCountries) {
+                    keys.forEach(key => {
+                        value = dataJson[key][country][currentAgeGroup][currentGender]
+                        if (value != "N/A") {
+                            values.push({ "country": country, "name": key, "value": value })
+                        }
+                    });
+                }
+            }
+
+            let uniqueCountries = [...new Set(values.map(item => item.country))];
+
+
 
             if (lineLoad == 0) {
                 svg = d3.select(".line-chart").insert("svg", "div")
@@ -336,7 +355,7 @@
                     .attr("width", width)
                     .attr("height", height)
                     .attr("viewBox", [0, 0, width, height])
-                    .attr("style", "max-width: 100%; height: auto; height: intrinsic; background:#001489");
+                    .attr("style", "height: auto; height: intrinsic; background:#001489");
 
                 xAxis = svg.append("g")
                     .attr("transform", `translate(0,${height - marginBottom})`)
@@ -360,6 +379,7 @@
 
                 path = svg.append("path")
                     .attr("id", "line-path")
+                    .attr("class", "line-path")
                     .attr("fill", "none")
                     .attr("stroke", "#FFDD00")
                     .attr("stroke-width", 1.5)
@@ -371,6 +391,23 @@
                     .style("text-anchor", "middle")
                     .attr("fill", "#FFDD00");
 
+
+                dot = svg.append("g")
+                    .attr("display", "none");
+
+                dot.append("circle")
+                    .attr("r", 2.5);
+
+                dot.append("text")
+                    .attr("text-anchor", "middle")
+                    .attr("y", -8)
+                    .attr("fill", "#FFDD00");
+
+                svg
+                    .on("pointerenter", pointerentered)
+                    .on("pointermove", pointermoved)
+                    .on("pointerleave", pointerleft)
+                    .on("touchstart", event => event.preventDefault());
 
                 lineLoad = 1;
             } else {
@@ -399,19 +436,53 @@
 
             xAxis.call(d3.axisBottom(x).ticks(width / 80).tickFormat(d3.format(".4")));
 
-            yAxis.call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
+            yAxis.transition().duration(300).call(d3.axisLeft(y).ticks(height / 40).tickFormat(d3.format(".2s")))
 
             svg.append('g').call(yGrid)
 
-            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup} living in ${names[currentCountry].replaceAll("_", " ")}`);
+            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup}`);
 
             const line = d3.line()
                 .x(d => x(d.name))
                 .y(d => y(d.value));
 
-            path.transition()
-                .duration(1500)
-                .attr("d", line(values))
+            points = values.map((d) => [x(d.name), y(d.value), names[d.country].replaceAll("_", " ")]);
+
+            if (compare) {
+                svg.selectAll('.line-path').remove()
+                for (country of uniqueCountries) {
+                    svg.append("path")
+                        .attr("id", "line-path" + country)
+                        .attr("class", "line-path")
+                        .attr("fill", "none")
+                        .attr("stroke", "#FFDD00")
+                        .attr("stroke-width", 1.5)
+                        .attr("d", line(values.filter(x => x.country === country)))
+                }
+            } else {
+                path.transition()
+                    .duration(1500)
+                    .attr("d", line(values))
+            }
+
+            function pointermoved(event) {
+                const [xm, ym] = d3.pointer(event);
+                const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
+                const [x, Y, k] = points[i];
+                dot.attr("transform", `translate(${x},${Y})`);
+                dot.select("text").text(k + " " + format(y.invert(Y)));
+            }
+
+            function pointerentered() {
+                dot.attr("display", null);
+            }
+
+            function pointerleft() {
+                dot.attr("display", "none");
+                svg.node().value = null;
+                svg.dispatch("input", { bubbles: true });
+            }
+
         }
 
         function selectCountry(element) {
@@ -420,6 +491,10 @@
             currentCountry = this.id
             d3.select("#" + currentCountry).style("fill", "red")
             d3.select("#" + names[currentCountry]).style("fill", "red")
+            compare = false
+            lineCountries = []
+            d3.select("#line-chart").remove()
+            lineLoad = 0;
             updateLineChart()
         }
 
@@ -464,16 +539,31 @@
 
         function populateCountryOptions() {
             for (const [key, value] of Object.entries(names)) {
-                country.append("option").attr("value", key).html(value.replaceAll("_", " "));
+                countrySelect.append("option").attr("value", key).html(value.replaceAll("_", " "));
             }
         }
 
         function addCountryToLine() {
-
+            var selectedIndex = countrySelect.property('selectedIndex')
+            var countryOptions = d3.selectAll("#countrySelect option")
+            selectedCountry = countryOptions["_groups"][0][selectedIndex].value;
+            if (!lineCountries.includes(selectedCountry)) {
+                lineCountries.push(selectedCountry)
+                compare = true;
+                updateLineChart();
+            }
         }
 
         function removeCountryFromLine() {
-
+            var selectedIndex = countrySelect.property('selectedIndex')
+            var countryOptions = d3.selectAll("#countrySelect option")
+            selectedCountry = countryOptions["_groups"][0][selectedIndex].value;
+            if (lineCountries.includes(selectedCountry)) {
+                const index = lineCountries.indexOf(selectCountry)
+                lineCountries.splice(index, 1)
+                compare = true;
+                updateLineChart();
+            }
         }
 
     </script>
