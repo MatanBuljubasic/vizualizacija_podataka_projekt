@@ -3,6 +3,7 @@ body {
     background-color: #001489;
 }
 
+
 .header {
     margin-bottom: 5px;
     padding: 1%;
@@ -122,6 +123,11 @@ span {
     display: inline-block;
     width: 60px;
     height: 34px;
+    margin-top: 20px;
+}
+
+.bar-chart p {
+    color: #FFDD00;
 }
 
 /* Hide default HTML checkbox */
@@ -200,6 +206,16 @@ input:checked+.slider:before {
     flex-direction: row;
     justify-content: space-between;
     gap: 5px;
+}
+
+.bar-chart,
+.line-chart {
+    display: flex;
+    flex-direction: column;
+}
+
+.countryPicker {
+    margin-top: 20px;
 }
 
 svg {

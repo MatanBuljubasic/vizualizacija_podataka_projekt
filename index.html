@@ -37,13 +37,23 @@
         <div class="map-container">
         </div>
         <div class="chart-container">
+            <div class="bar-chart">
+                <label class="switch">
+                    <input id="eu_switch" type="checkbox">
+                    <span class="slider round"></span>
+                </label>
+                <p>Show EU in bar chart</p>
+            </div>
+            <div class="line-chart">
+                <div class="countryPicker">
+                    <select name="countrySelect" id="countrySelect">
+                    </select>
+                    <button class="addButton">Add</button>
+                    <button class="removeButton">Remove</button>
+                </div>
+            </div>
         </div>
     </div>
-    <label class="switch">
-        <input id="eu_switch" type="checkbox">
-        <span class="slider round"></span>
-    </label>
-    <p>Show EU in bar chart</p>
     <div id="popup">Popup fixed</div>
     <script>
         var width = 590;
@@ -62,8 +72,12 @@
         var year = d3.select("#year")
         var gender = d3.selectAll(".gender").on("change", updateGender)
         var ageGroup = d3.select("#ageGroup").on("change", updateAgeGroup)
-        var options = ageGroup.selectAll("option")
+        var options = ageGroup.selectAll("#ageGroup option")
+        var country = d3.select("#countrySelect")
+        var countryOptions = d3.selectAll("#countrySelect option")
         var eu_switch = d3.select("#eu_switch").on("change", toggleEu)
+        var addButton = d3.select(".addButton").on("click", addCountryToLine)
+        var removeButton = d3.select(".removeButton").on("click", removeCountryFromLine)
 
 
         names = {
@@ -128,6 +142,8 @@
             'T': "Total"
         }
 
+        populateCountryOptions();
+
         const handleZoom = (e) => g.attr('transform', e.transform);
 
         var projection = d3.geoMercator()
@@ -147,8 +163,6 @@
             .style("background", "#001489")
             .call(d3.zoom().on("zoom", handleZoom))
             .append("g");
-
-        var chart = d3.select(".chart-container")
 
         d3.json("data.json").then(function (data) {
             dataJson = data
@@ -200,8 +214,8 @@
 
             console.log(values)
             if (barLoad == 0) {
-                svg = chart
-                    .append("svg")
+                svg = d3.select(".bar-chart")
+                    .insert("svg", "label")
                     .attr("id", "chart")
                     .attr("width", width)
                     .attr("height", height)
@@ -317,7 +331,7 @@
             });
 
             if (lineLoad == 0) {
-                svg = d3.select(".chart-container").append("svg")
+                svg = d3.select(".line-chart").insert("svg", "div")
                     .attr("id", "line-chart")
                     .attr("width", width)
                     .attr("height", height)
@@ -446,6 +460,20 @@
         function toggleEu() {
             showEU = !showEU
             updateBarChart()
+        }
+
+        function populateCountryOptions() {
+            for (const [key, value] of Object.entries(names)) {
+                country.append("option").attr("value", key).html(value.replaceAll("_", " "));
+            }
+        }
+
+        function addCountryToLine() {
+
+        }
+
+        function removeCountryFromLine() {
+
         }
 
     </script>
