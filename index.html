@@ -70,7 +70,7 @@
         var popup = d3.select("#popup");
         var compare = false;
         var points;
-        const format = d3.format(",")
+        const format = d3.format(",.6r")
 
         var slider = d3.select("#slider").on("mouseup", updateBarChart).on("input", updateYear)
         var year = d3.select("#year")
@@ -143,6 +143,14 @@
             'M': "Male",
             'F': "Female",
             'T': "Total"
+        }
+
+        ageGroupNames = {
+            'TOTAL': "any age",
+            'UNK': "unknown age",
+            'Y15-64': "age between 15 and 64",
+            'Y_GE65': "more than 64 years of age",
+            'Y_LT15': "less than 15 years of age"
         }
 
         populateCountryOptions();
@@ -280,7 +288,7 @@
 
             svg.append('g').call(xGrid)
 
-            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup} living in each country`);
+            title.text(`${genderNames[currentGender]} population in ${currentYear} of ${ageGroupNames[currentAgeGroup]} living in each country`);
 
             const rects = svg.selectAll("rect").data(values);
 
@@ -440,7 +448,7 @@
 
             svg.append('g').call(yGrid)
 
-            title.text(`${genderNames[currentGender]} population in ${currentYear} of age group ${currentAgeGroup}`);
+            title.text(`${genderNames[currentGender]} population in ${currentYear} of ${ageGroupNames[currentAgeGroup]}`);
 
             const line = d3.line()
                 .x(d => x(d.name))
@@ -448,6 +456,7 @@
 
             points = values.map((d) => [x(d.name), y(d.value), names[d.country].replaceAll("_", " ")]);
 
+            console.log(points)
             if (compare) {
                 svg.selectAll('.line-path').remove()
                 for (country of uniqueCountries) {
@@ -538,8 +547,14 @@
         }
 
         function populateCountryOptions() {
-            for (const [key, value] of Object.entries(names)) {
-                countrySelect.append("option").attr("value", key).html(value.replaceAll("_", " "));
+            Object.values(names)
+                .sort()
+                .forEach(function (d, i) {
+                    countrySelect.append("option").attr("value", getKeyByValue(names, d)).html(d.replaceAll("_", " "));
+                })
+
+            function getKeyByValue(object, value) {
+                return Object.keys(object).find(key => object[key] === value);
             }
         }
 
