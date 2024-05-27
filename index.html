@@ -70,7 +70,7 @@
         var popup = d3.select("#popup");
         var compare = false;
         var points;
-        const format = d3.format(".0f")
+        const format = d3.format(",")
 
         var slider = d3.select("#slider").on("mouseup", updateBarChart).on("input", updateYear)
         var year = d3.select("#year")
