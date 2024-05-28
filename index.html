@@ -38,11 +38,25 @@
         </div>
         <div class="chart-container">
             <div class="bar-chart">
-                <label class="switch">
-                    <input id="eu_switch" type="checkbox">
-                    <span class="slider round"></span>
-                </label>
-                <p>Show EU in bar chart</p>
+                <div style="display: flex; flex-direction: row; align-items: center;">
+                    <div style="border-right: 2px #FFDD00 solid; border-left: 2px #FFDD00 solid; display: flex; flex-direction: row; align-items: center; padding-bottom: 5px; padding-left: 5px;">
+                        <label class="switch">
+                            <input id="eu_switch" type="checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                        <p>Show EU in bar chart</p>
+                    </div>
+                    <div style="border-left: 2px #FFDD00 solid; border-right: 2px #FFDD00 solid; display: flex; flex-direction: row; align-items: center; padding-bottom: 5px;">
+                        <p>Sort ascending</p>
+                        <label class="switch">
+                            <input id="sort_switch" type="checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                        <p>Sort descending</p>
+                    </div>
+                    
+                    
+                </div>
             </div>
             <div class="line-chart">
                 <div class="countryPicker">
@@ -50,6 +64,10 @@
                     </select>
                     <button class="addButton">Add</button>
                     <button class="removeButton">Remove</button>
+                    <p>Countries shown on the graph, excluding selected country on map</p>
+                    <hr>
+                    <div id="selectedCountries">
+                    </div>
                 </div>
             </div>
         </div>
@@ -70,6 +88,7 @@
         var popup = d3.select("#popup");
         var compare = false;
         var points;
+        var sort = "asc"
         const format = d3.format(",.6r")
 
         var slider = d3.select("#slider").on("mouseup", updateBarChart).on("input", updateYear)
@@ -79,6 +98,7 @@
         var options = ageGroup.selectAll("#ageGroup option")
         var countrySelect = d3.select("#countrySelect")
         var eu_switch = d3.select("#eu_switch").on("change", toggleEu)
+        var sort_switch = d3.select("#sort_switch").on("change", toggleSort)
         var addButton = d3.select(".addButton").on("click", addCountryToLine)
         var removeButton = d3.select(".removeButton").on("click", removeCountryFromLine)
 
@@ -223,9 +243,16 @@
                 }
             });
 
+            if(sort == "asc"){
+                values.sort((a,b) => b.value - a.value)
+            } else {
+                values.sort((a,b) => a.value - b.value)
+            }
+            countries = values.map(value => value.name.replaceAll("_", " "))            
+
             if (barLoad == 0) {
                 svg = d3.select(".bar-chart")
-                    .insert("svg", "label")
+                    .insert("svg", "div")
                     .attr("id", "chart")
                     .attr("width", width)
                     .attr("height", height)
@@ -456,7 +483,6 @@
 
             points = values.map((d) => [x(d.name), y(d.value), names[d.country].replaceAll("_", " ")]);
 
-            console.log(points)
             if (compare) {
                 svg.selectAll('.line-path').remove()
                 for (country of uniqueCountries) {
@@ -504,6 +530,7 @@
             lineCountries = []
             d3.select("#line-chart").remove()
             lineLoad = 0;
+            d3.select("#selectedCountries").html("")
             updateLineChart()
         }
 
@@ -546,6 +573,15 @@
             updateBarChart()
         }
 
+        function toggleSort() {
+            if(sort == "asc"){
+                sort = "desc"
+            } else {
+                sort = "asc"
+            }
+            updateBarChart()
+        }
+
         function populateCountryOptions() {
             Object.values(names)
                 .sort()
@@ -561,12 +597,15 @@
         function addCountryToLine() {
             var selectedIndex = countrySelect.property('selectedIndex')
             var countryOptions = d3.selectAll("#countrySelect option")
+            var countriesDiv = d3.select("#selectedCountries")
             selectedCountry = countryOptions["_groups"][0][selectedIndex].value;
             if (!lineCountries.includes(selectedCountry)) {
                 lineCountries.push(selectedCountry)
                 compare = true;
+                countriesDiv.append("p").attr("id", "list" + selectedCountry).html(names[selectedCountry])
                 updateLineChart();
             }
+
         }
 
         function removeCountryFromLine() {
@@ -577,6 +616,7 @@
                 const index = lineCountries.indexOf(selectCountry)
                 lineCountries.splice(index, 1)
                 compare = true;
+                d3.select("#list"+selectedCountry).remove()
                 updateLineChart();
             }
         }
