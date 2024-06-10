@@ -51,6 +51,10 @@ span {
     font-size: x-large;
 }
 
+#selectedCountryLine {
+    font-size: large;
+}
+
 .sex-selector input {
     margin: 0;
     padding: 0;

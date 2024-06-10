@@ -68,7 +68,7 @@
                     </select>
                     <button class="addButton">Add</button>
                     <button class="removeButton">Remove</button>
-                    <p>Countries shown on the graph, excluding selected country on map</p>
+                    <p>Countries shown on the graph, excluding <span id="selectedCountryLine"></span></p>
                     <hr>
                     <div id="selectedCountries">
                     </div>
@@ -434,6 +434,7 @@
 
 
                 dot = svg.append("g")
+                    .attr("id", "dot")
                     .attr("display", "none");
 
                 dot.append("circle")
@@ -446,13 +447,13 @@
 
                 svg
                     .on("pointerenter", pointerentered)
-                    .on("pointermove", pointermoved)
                     .on("pointerleave", pointerleft)
                     .on("touchstart", event => event.preventDefault());
 
                 lineLoad = 1;
             } else {
                 svg = d3.select("#line-chart");
+                dot = d3.select("#dot")
                 xAxis = svg.select(".line-xaxis");
                 yAxis = svg.select(".line-yaxis");
                 path = svg.select("#line-path");
@@ -462,6 +463,8 @@
             const x = d3.scaleUtc(d3.extent(keys), [marginLeft, width - marginRight]);
 
             const y = d3.scaleLinear([0, d3.max(values, function (d) { return d.value + 10 })], [height - marginBottom, marginTop]);
+
+            svg.on("pointermove", function() {pointermoved(event, y, dot)})
 
             yGrid = (g) => g
                 .attr('class', 'grid-lines')
@@ -506,12 +509,12 @@
                     .attr("d", line(values))
             }
 
-            function pointermoved(event) {
+            function pointermoved(event, scale, dot) {
                 const [xm, ym] = d3.pointer(event);
                 const i = d3.leastIndex(points, ([x, y]) => Math.hypot(x - xm, y - ym));
                 const [x, Y, k] = points[i];
                 dot.attr("transform", `translate(${x},${Y})`);
-                dot.select("text").text(k + " " + format(y.invert(Y)));
+                dot.select("text").text(k + " " + format(scale.invert(Y)));
             }
 
             function pointerentered() {
@@ -532,6 +535,7 @@
             currentCountry = this.id
             d3.select("#" + currentCountry).style("fill", "red")
             d3.select("#" + names[currentCountry]).style("fill", "red")
+            d3.select("#selectedCountryLine").text(names[currentCountry])
             compare = false
             lineCountries = []
             d3.select("#line-chart").remove()
